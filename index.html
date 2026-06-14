@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gacha Bot Mobile Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-darken: #0f1115;
+            --bg-primary: #181a20;
+            --bg-secondary: #222630;
+            --bg-card: #2b303c;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --blurple: #5865f2;
+            --blurple-hover: #4752c4;
+            --green: #248046;
+            --danger: #da373c;
+            --accent: #ffb900;
+            --radius: 12px;
+            --transition: all 0.25s ease;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body { background-color: var(--bg-darken); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* Utilitários de Tela */
+        .screen { display: none; flex-direction: column; width: 100%; max-width: 480px; margin: 0 auto; padding: 20px; min-height: 100vh; }
+        .screen.active { display: flex; }
+
+        /* TOAST NOTIFICATIONS NATIGAS */
+        #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: calc(100% - 40px); max-width: 400px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: var(--bg-secondary); color: var(--text-main); padding: 16px; border-radius: var(--radius); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px; border-left: 5px solid var(--blurple); animation: slideIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards; font-weight: 500; pointer-events: auto; }
+        .toast.success { border-left-color: var(--green); }
+        .toast.error { border-left-color: var(--danger); }
+        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* TÍTULOS E TEXTOS */
+        h1 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 8px; background: linear-gradient(90deg, #fff, var(--blurple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { font-size: 20px; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        p { color: var(--text-muted); font-size: 14px; text-align: center; margin-bottom: 30px; }
+
+        /* COMPONENTES DE INTERFACE */
+        .card { background: var(--bg-primary); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+        .input-group label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+        .input-group input, .input-group select { background: var(--bg-secondary); border: 1px solid rgba(255,255,255,0.1); padding: 14px; border-radius: 8px; color: white; font-size: 15px; transition: var(--transition); width: 100%; }
+        .input-group input:focus, .input-group select:focus { border-color: var(--blurple); outline: none; background: var(--bg-card); }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* BOTÕES */
+        .btn { background: var(--blurple); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition); width: 100%; text-decoration: none; text-align: center; }
+        .btn:active { transform: scale(0.98); }
+        .btn-green { background: var(--green); }
+        .btn-danger { background: var(--danger); }
+        .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 6px; }
+
+        /* SCREEN 1: LOGIN */
+        #screen-login { justify-content: center; }
+        .logo-box { text-align: center; margin-bottom: 40px; }
+        .logo-box i { font-size: 70px; color: var(--blurple); margin-bottom: 15px; }
+
+        /* SCREEN 2: SELEÇÃO DE SERVIDOR */
+        .server-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg-primary); padding: 15px; border-radius: var(--radius); margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .server-info { display: flex; align-items: center; gap: 12px; }
+        .server-icon { width: 45px; height: 45px; background: var(--bg-secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-muted); background-size: cover; }
+
+        /* SCREEN 3: DASHBOARD PRINCIPAL */
+        header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .current-server { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        
+        /* ABAS/MENU INFERIOR MOBILE */
+        .nav-tabs { display: flex; background: var(--bg-primary); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; padding: 6px; margin-bottom: 20px; overflow-x: auto; gap: 5px; scrollbar-width: none; }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        .tab-link { flex: 1; padding: 10px; text-align: center; border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; white-space: nowrap; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tab-link i { font-size: 16px; }
+        .tab-link.active { background: var(--bg-secondary); color: var(--blurple); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* LISTA DE CARTAS */
+        .card-list-item { display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+        .card-list-img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; background: #000; }
+        .card-list-details { flex: 1; }
+        .card-list-name { font-weight: bold; font-size: 15px; }
+        .card-list-meta { font-size: 12px; color: var(--text-muted); }
+        .card-list-actions { display: flex; gap: 6px; }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+
+    <div id="screen-login" class="screen">
+        <div class="logo-box">
+            <i class="fa-solid fa-gamepad"></i>
+            <h1>Gacha Dash</h1>
+            <p>Gerencie as cartas, moedas e configurações do seu bot de forma 100% mobile.</p>
+        </div>
+        <button class="btn" onclick="loginDiscord()"><i class="fa-brands fa-discord"></i> Entrar com o Discord</button>
+    </div>
+
+    <div id="screen-servers" class="screen">
+        <h2><i class="fa-solid fa-server"></i> Escolha um Servidor</h2>
+        <p style="text-align: left;">Selecione em qual servidor você deseja gerenciar os dados do bot.</p>
+        
+        <div id="servers-list" style="flex: 1; overflow-y: auto; margin-bottom: 20px;">
+            </div>
+
+        <button class="btn btn-outline" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Sair da Conta</button>
+    </div>
+
+    <div id="screen-dash" class="screen">
+        <header>
+            <div class="current-server">
+                <div id="current-server-icon" class="server-icon"></div>
+                <span id="current-server-name">Servidor</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="voltarParaServidores()" style="width: auto;">Trocar</button>
+        </header>
+
+        <div class="nav-tabs">
+            <div class="tab-link active" onclick="switchTab('tab-bot')"><i class="fa-solid fa-robot"></i>Bot</div>
+            <div class="tab-link" onclick="switchTab('tab-moeda')"><i class="fa-solid fa-coins"></i>Moeda</div>
+            <div class="tab-link" onclick="switchTab('tab-raridade')"><i class="fa-solid fa-star"></i>Raridades</div>
+            <div class="tab-link" onclick="switchTab('tab-cartas')"><i class="fa-solid fa-box-open"></i>Cartas</div>
+        </div>
+
+        <div id="tab-bot" class="tab-content active">
+            <div class="card">
+                <h2>🤖 Perfil do Bot</h2>
+                <div class="input-group">
+                    <label>Nome do Bot</label>
+                    <input type="text" id="bot-name" placeholder="Ex: Gacha King">
+                </div>
+                <div class="input-group">
+                    <label>URL do Avatar</label>
+                    <input type="text" id="bot-avatar" placeholder="https://...">
+                </div>
+                <button class="btn" onclick="salvarPerfilBot()"><i class="fa-solid fa-floppy-disk"></i> Salvar Perfil</button>
+            </div>
+
+            <a href="https://discord.com/oauth2/authorize?client_id=1468521279547248721&permissions=2147483648&scope=bot%20applications.commands" target="_blank" class="btn btn-green">
+                <i class="fa-solid fa-plus"></i> Convidar / Jogar Solo
+            </a>
+        </div>
+
+        <div id="tab-moeda" class="tab-content">
+            <div class="card">
+                <h2>💰 Sistema de Moeda</h2>
+                <div class="input-group">
+                    <label>Nome da Moeda</label>
+                    <input type="text" id="coin-name" placeholder="Ex: Ouro, Cristais">
+                </div>
+                <div class="input-group">
+                    <label>URL do Ícone da Moeda</label>
+                    <input type="text" id="coin-icon" placeholder="https://...">
+                </div>
+                <button class="btn" onclick="salvarMoeda()"><i class="fa-solid fa-floppy-disk"></i> Salvar Economia</button>
+            </div>
+        </div>
+
+        <div id="tab-raridade" class="tab-content">
+            <div class="card">
+                <h2>✨ Ajustar Raridade</h2>
+                <div class="input-group">
+                    <label>Nome da Raridade</label>
+                    <input type="text" id="rarity-name" placeholder="Ex: Lendária">
+                </div>
+                <div class="input-group">
+                    <label>Porcentagem de Drop (%)</label>
+                    <input type="number" id="rarity-chance" placeholder="Ex: 5" min="0" max="100">
+                </div>
+                <button class="btn" onclick="salvarRaridade()"><i class="fa-solid fa-plus"></i> Aplicar Raridade</button>
+            </div>
+            <div class="card">
+                <h3>Raridades Definidas</h3>
+                <div id="raridades-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    </div>
+            </div>
+        </div>
+
+        <div id="tab-cartas" class="tab-content">
+            <div class="card">
+                <h2 id="form-carta-titulo">🃏 Nova Carta Base</h2>
+                <input type="hidden" id="card-key-edit">
+                
+                <div class="input-group">
+                    <label>Nome da Carta</label>
+                    <input type="text" id="card-name">
+                </div>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Raridade</label>
+                        <select id="card-rarity-select">
+                            <option value="Comum">Comum</option>
+                            <option value="Raro">Raro</option>
+                            <option value="Épico">Épico</option>
+                            <option value="Lendário">Lendário</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Preço Venda (💰)</label>
+                        <input type="number" id="card-price" value="100">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Força (⚔️)</label>
+                        <input type="number" id="card-force" value="50">
+                    </div>
+                    <div class="input-group">
+                        <label>Defesa (🛡️)</label>
+                        <input type="number" id="card-defense" value="50">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>URL da Imagem da Carta</label>
+                    <input type="text" id="card-image" placeholder="https://...">
+                </div>
+                <button id="btn-save-card" class="btn" onclick="salvarCarta()"><i class="fa-solid fa-plus"></i> Criar Carta</button>
+                <button id="btn-cancel-edit" class="btn btn-outline" onclick="limparFormularioCarta()" style="display:none; margin-top: 10px;">Cancelar</button>
+            </div>
+
+            <h3 style="margin-bottom: 12px;">Cartas Cadastradas</h3>
+            <div id="cards-container">
+                </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAizAqZX83G_Ho_8DRyPjXhsHMFCYrFO34",
+            authDomain: "testes-kaua.firebaseapp.com",
+            databaseURL: "https://testes-kaua-default-rtdb.firebaseio.com",
+            projectId: "testes-kaua",
+            storageBucket: "testes-kaua.firebasestorage.app",
+            messagingSenderId: "800727439704",
+            appId: "1:800727439704:web:f3035c4974c313dacf6d2d",
+            measurementId: "G-2RXM966CEK"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // CONFIGS CLIENTE DISCORD OAUTH2
+        const CLIENT_ID = '1468521279547248721';
+        const REDIRECT_URI = "https://seu-site-hospedado.com";
+
+        let activeServerId = localStorage.getItem('active_server_id') || null;
+
+        // SISTEMA NATIVO DE NOTIFICAÇÃO (TOAST) REPLACING ALERTS
+        window.showToast = function(text, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = '<i class="fa-solid fa-info-circle"></i>';
+            if(type === 'success') icon = '<i class="fa-solid fa-circle-check"></i>';
+            if(type === 'error') icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+
+            toast.innerHTML = `${icon} <span>${text}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // CONTROLADOR DE TELAS
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // FLUXO OAUTH2 DISCORD
+        window.loginDiscord = function() {
+            const authUrl = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify+guilds`;
+            window.location.href = authUrl;
+        }
+
+        window.logout = function() {
+            localStorage.clear();
+            showScreen('screen-login');
+            showToast('Sessão encerrada com sucesso', 'info');
+        }
+
+        // CHECAR PARÂMETROS DE LOGIN/SESSÃO
+        function initAuth() {
+            const hash = window.location.hash;
+            let token = localStorage.getItem('discord_token');
+
+            if (hash) {
+                const params = new URLSearchParams(hash.slice(1));
+                token = params.get('access_token');
+                if (token) {
+                    localStorage.setItem('discord_token', token);
+                    window.location.hash = ''; 
+                }
+            }
+
+            if (token) {
+                carregarServidores(token);
+            } else {
+                showScreen('screen-login');
+            }
+        }
+
+        // CHAMADA DA API DO DISCORD PARA BUSCAR SERVIDORES DO USUÁRIO
+        async function carregarServidores(token) {
+            try {
+                const res = await fetch('https://discord.com/api/users/@me/guilds', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (!res.ok) throw new Error('Token expirado');
+
+                const guilds = await res.json();
+                
+                // Filtra os servidores onde ele é Administrador (Flag de permissão 0x8)
+                const adminGuilds = guilds.filter(g => (g.permissions & 0x8) === 0x8);
+                renderServers(adminGuilds);
+
+                if (activeServerId) {
+                    const serverCorrente = adminGuilds.find(g => g.id === activeServerId);
+                    if(serverCorrente) {
+                        selecionarServidor(serverCorrente.id, serverCorrente.name, serverCorrente.icon);
+                    } else {
+                        showScreen('screen-servers');
+                    }
+                } else {
+                    showScreen('screen-servers');
+                }
+
+            } catch (err) {
+                localStorage.removeItem('discord_token');
+                showScreen('screen-login');
+                showToast('Erro de autenticação. Faça login novamente.', 'error');
+            }
+        }
+
+        function renderServers(servers) {
+            const container = document.getElementById('servers-list');
+            container.innerHTML = '';
+
+            if(servers.length === 0) {
+                container.innerHTML = '<p style="color:var(--danger)">Você precisa ser administrador de algum servidor para usar o painel.</p>';
+                return;
+            }
+
+            servers.forEach(s => {
+                const iconUrl = s.icon ? `https://cdn.discordapp.com/icons/${s.id}/${s.icon}.png` : '';
+                const iconContent = iconUrl ? '' : s.name.charAt(0);
+                const style = iconUrl ? `style="background-image: url('${iconUrl}')"` : '';
+
+                container.innerHTML += `
+                    <div class="server-item">
+                        <div class="server-info">
+                            <div class="server-icon" ${style}>${iconContent}</div>
+                            <div style="font-weight:700;">${s.name}</div>
+                        </div>
+                        <button class="btn btn-sm" onclick="selecionarServidor('${s.id}', '${s.name}', '${s.icon}')">Entrar</button>
+                    </div>
+                `;
+            });
+        }
+
+        window.selecionarServidor = function(id, name, icon) {
+            activeServerId = id;
+            localStorage.setItem('active_server_id', id);
+            
+            document.getElementById('current-server-name').innerText = name;
+            const iconContainer = document.getElementById('current-server-icon');
+            if(icon && icon !== 'null') {
+                iconContainer.style.backgroundImage = `url('https://cdn.discordapp.com/icons/${id}/${icon}.png')`;
+                iconContainer.innerText = '';
+            } else {
+                iconContainer.style.backgroundImage = 'none';
+                iconContainer.innerText = name.charAt(0);
+            }
+
+            showScreen('screen-dash');
+            syncFirebaseData();
+        }
+
+        window.voltarParaServidores = function() {
+            localStorage.removeItem('active_server_id');
+            activeServerId = null;
+            showScreen('screen-servers');
+        }
+
+        // CONTROLE DE NAVEGAÇÃO POR ABAS (DASHBOARD)
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // ================= SINCRONIZAÇÃO FIREBASE ESCALADA POR SERVIDOR =================
+        let unsubs = [];
+
+        function syncFirebaseData() {
+            if(!activeServerId) return;
+
+            // Escuta Perfil do Bot do Servidor Ativo
+            onValue(ref(db, `servers/${activeServerId}/config_bot/perfil`), (snapshot) => {
+                const data = snapshot.val();
+                if(data) {
+                    document.getElementById('bot-name').value = data.nome || '';
+                    document.getElementById('bot-avatar').value = data.avatar_url || '';
+                }
+            });
+
+            // Escuta Dados Monetários do Servidor Ativo
+            onValue(ref(db, `servers/${activeServerId}/config_bot/moeda`), (snapshot) => {
+                const data = snapshot.val();
+                if(data) {
+                    document.getElementById('coin-name').value = data.nome || '';
+                    document.getElementById('coin-icon').value = data.icone_url || '';
+                }
+            });
+
+            // Escuta Raridades do Servidor Ativo
+            onValue(ref(db, `servers/${activeServerId}/config_bot/raridades`), (snapshot) => {
+                const data = snapshot.val();
+                const div = document.getElementById('raridades-list');
+                div.innerHTML = '';
+                if(data) {
+                    for(let r in data) {
+                        div.innerHTML += `
+                            <div style="display:flex; justify-content:space-between; background:var(--bg-secondary); padding:8px 12px; border-radius:6px; font-size:14px;">
+                                <span>✨ ${r}</span>
+                                <span style="color:var(--accent); font-weight:bold;">${data[r].chance}%</span>
+                            </div>`;
+                    }
+                }
+            });
+
+            // Escuta Base de Cartas do Servidor Ativo
+            onValue(ref(db, `servers/${activeServerId}/cartas_base`), (snapshot) => {
+                const data = snapshot.val();
+                const container = document.getElementById('cards-container');
+                container.innerHTML = '';
+
+                if(!data) {
+                    container.innerHTML = '<p style="color: var(--text-muted)">Nenhuma carta cadastrada.</p>';
+                    return;
+                }
+
+                for(let key in data) {
+                    const carta = data[key];
+                    container.innerHTML += `
+                        <div class="card-list-item">
+                            <img class="card-list-img" src="${carta.imagem}">
+                            <div class="card-list-details">
+                                <div class="card-list-name">${carta.nome}</div>
+                                <div class="card-list-meta">${carta.raridade} • ⚔️${carta.forca} 🛡️${carta.resistencia} • 💰${carta.preco}</div>
+                            </div>
+                            <div class="card-list-actions">
+                                <button class="btn btn-sm" onclick="prepararEdicao('${key}', '${carta.nome}', '${carta.raridade}', ${carta.forca}, ${carta.resistencia}, ${carta.preco}, '${carta.imagem}')"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn btn-sm btn-danger" onclick="deletarCarta('${key}')"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        // INTERAÇÕES E OPERAÇÕES DO BANCO DE DADOS
+        window.salvarPerfilBot = function() {
+            set(ref(db, `servers/${activeServerId}/config_bot/perfil`), {
+                nome: document.getElementById('bot-name').value,
+                avatar_url: document.getElementById('bot-avatar').value
+            }).then(() => showToast('Perfil atualizado com sucesso!', 'success'));
+        }
+
+        window.salvarMoeda = function() {
+            set(ref(db, `servers/${activeServerId}/config_bot/moeda`), {
+                nome: document.getElementById('coin-name').value,
+                icone_url: document.getElementById('coin-icon').value
+            }).then(() => showToast('Configuração de moeda salva!', 'success'));
+        }
+
+        window.salvarRaridade = function() {
+            const name = document.getElementById('rarity-name').value;
+            const chance = parseInt(document.getElementById('rarity-chance').value) || 0;
+            if(!name) return showToast('Preencha o nome da raridade', 'error');
+
+            set(ref(db, `servers/${activeServerId}/config_bot/raridades/${name}`), { chance })
+            .then(() => {
+                showToast('Raridade cadastrada!', 'success');
+                document.getElementById('rarity-name').value = '';
+                document.getElementById('rarity-chance').value = '';
+            });
+        }
+
+        window.salvarCarta = function() {
+            const keyEdit = document.getElementById('card-key-edit').value;
+            const name = document.getElementById('card-name').value;
+            const rarity = document.getElementById('card-rarity-select').value;
+            const force = parseInt(document.getElementById('card-force').value) || 0;
+            const defense = parseInt(document.getElementById('card-defense').value) || 0;
+            const price = parseInt(document.getElementById('card-price').value) || 0;
+            const image = document.getElementById('card-image').value || 'https://placehold.co/150';
+
+            if(!name) return showToast('Nome da carta é obrigatório!', 'error');
+
+            const dados = { nome: name, raridade: rarity, forca: force, resistencia: defense, preco: price, imagem: image };
+
+            if(keyEdit) {
+                update(ref(db, `servers/${activeServerId}/cartas_base/${keyEdit}`), dados)
+                .then(() => {
+                    showToast('Carta alterada!', 'success');
+                    limparFormularioCarta();
+                });
+            } else {
+                const novaRef = push(ref(db, `servers/${activeServerId}/cartas_base`));
+                dados.id = novaRef.key;
+                set(novaRef, dados).then(() => {
+                    showToast('Carta adicionada ao gacha!', 'success');
+                    limparFormularioCarta();
+                });
+            }
+        }
+
+        window.deletarCarta = function(key) {
+            remove(ref(db, `servers/${activeServerId}/cartas_base/${key}`))
+            .then(() => showToast('Carta deletada da base.', 'info'));
+        }
+
+        window.prepararEdicao = function(key, nome, raridade, forca, resistencia, preco, imagem) {
+            document.getElementById('card-key-edit').value = key;
+            document.getElementById('card-name').value = nome;
+            document.getElementById('card-rarity-select').value = raridade;
+            document.getElementById('card-force').value = forca;
+            document.getElementById('card-defense').value = resistencia;
+            document.getElementById('card-price').value = preco;
+            document.getElementById('card-image').value = imagem;
+
+            document.getElementById('form-carta-titulo').innerText = "⚙️ Editar Carta";
+            document.getElementById('btn-save-card').innerHTML = "<i class='fa-solid fa-floppy-disk'></i> Salvar Mudanças";
+            document.getElementById('btn-cancel-edit').style.display = "block";
+            document.getElementById('form-carta-titulo').scrollIntoView({behavior: 'smooth'});
+        }
+
+        window.limparFormularioCarta = function() {
+            document.getElementById('card-key-edit').value = '';
+            document.getElementById('card-name').value = '';
+            document.getElementById('card-force').value = 50;
+            document.getElementById('card-defense').value = 50;
+            document.getElementById('card-price').value = 100;
+            document.getElementById('card-image').value = '';
+
+            document.getElementById('form-carta-titulo').innerText = "🃏 Nova Carta Base";
+            document.getElementById('btn-save-card').innerHTML = "<i class='fa-solid fa-plus'></i> Criar Carta";
+            document.getElementById('btn-cancel-edit').style.display = "none";
+        }
+
+        // Executa autenticação no boot da página
+        initAuth();
+    </script>
+</body>
+</html>
+
